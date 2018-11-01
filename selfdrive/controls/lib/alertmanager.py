@@ -10,7 +10,6 @@ AlertStatus = log.Live100Data.AlertStatus
 
 
 class AlertManager(object):
-
   def __init__(self):
     self.activealerts = []
     self.alerts = {alert.alert_type: alert for alert in ALERTS}

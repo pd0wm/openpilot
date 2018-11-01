@@ -41,6 +41,7 @@ interfaces = load_interfaces(_get_interface_names())
 
 # **** for use live only ****
 def fingerprint(logcan, timeout):
+  return None, None
   if os.getenv("SIMULATOR2") is not None:
     return ("simulator2", None)
   elif os.getenv("SIMULATOR") is not None:
@@ -91,10 +92,7 @@ def get_car(logcan, sendcan=None, passive=True):
 
   if candidate is None:
     cloudlog.warning("car doesn't match any fingerprints: %r", fingerprints)
-    if passive:
-      candidate = "mock"
-    else:
-      return None, None
+    candidate = "mock"
 
   interface_cls = interfaces[candidate]
 

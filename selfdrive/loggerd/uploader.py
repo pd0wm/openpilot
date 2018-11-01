@@ -257,7 +257,7 @@ def uploader_fn(exit_event):
   backoff = 0.1
   while True:
 
-    should_upload = (params.get("IsUploadVideoOverCellularEnabled") != "0") or is_on_wifi()
+    should_upload = (params.get("IsUploadVideoOverCellularEnabled") != "0")
 
     if exit_event.is_set():
       return
@@ -288,4 +288,3 @@ def main(gctx=None):
 
 if __name__ == "__main__":
   main()
-

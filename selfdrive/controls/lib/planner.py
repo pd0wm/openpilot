@@ -190,8 +190,10 @@ class LongitudinalMpc(object):
     self.cur_state[0].x_ego = 0.0
 
     if lead is not None and lead.status:
-      x_lead = lead.dRel
-      v_lead = max(0.0, lead.vLead)
+      v_rel = lead.vLead - self.v_mpc
+
+      x_lead = lead.dRel * 1.2
+      v_lead = max(0.0, lead.vLead + 0.2 * v_rel)
       a_lead = lead.aLeadK
 
 
