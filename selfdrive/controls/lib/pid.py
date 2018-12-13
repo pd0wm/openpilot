@@ -66,6 +66,7 @@ class PIController(object):
       self.i -= self.i_unwind_rate * float(np.sign(self.i))
     else:
       i = self.i + error * self.k_i * self.i_rate
+      i = clip(i, -0.25, 0.3)
       control = self.p + self.f + i
 
       if self.convert is not None:
