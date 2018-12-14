@@ -72,11 +72,13 @@ class PIController(object):
       if self.convert is not None:
         control = self.convert(control, speed=self.speed)
 
+      if freeze_integrator:
+        i = max(self.i, i)
+
       # Update when changing i will move the control away from the limits
       # or when i will move towards the sign of the error
       if ((error >= 0 and (control <= self.pos_limit or i < 0.0)) or \
-          (error <= 0 and (control >= self.neg_limit or i > 0.0))) and \
-         not freeze_integrator:
+          (error <= 0 and (control >= self.neg_limit or i > 0.0))):
         self.i = i
 
     control = self.p + self.f + self.i
