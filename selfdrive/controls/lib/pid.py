@@ -66,19 +66,16 @@ class PIController(object):
       self.i -= self.i_unwind_rate * float(np.sign(self.i))
     else:
       i = self.i + error * self.k_i * self.i_rate
-      i = clip(i, -0.25, 0.3)
       control = self.p + self.f + i
 
       if self.convert is not None:
         control = self.convert(control, speed=self.speed)
 
-      if freeze_integrator:
-        i = max(self.i, i)
-
       # Update when changing i will move the control away from the limits
       # or when i will move towards the sign of the error
       if ((error >= 0 and (control <= self.pos_limit or i < 0.0)) or \
-          (error <= 0 and (control >= self.neg_limit or i > 0.0))):
+          (error <= 0 and (control >= self.neg_limit or i > 0.0))) and \
+         not freeze_integrator:
         self.i = i
 
     control = self.p + self.f + self.i

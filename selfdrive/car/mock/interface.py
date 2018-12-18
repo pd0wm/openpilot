@@ -44,11 +44,13 @@ class CarInterface(object):
     self.prev_enabled = False
 
     self.can = messaging.sub_sock(context, service_list['can'].port)
+    self.a_prev = 0.
 
   @staticmethod
   def compute_gb(accel, speed):
-    ff = float(0.5 * speed / 40.)
-    return float(accel) / 5.0 + ff
+    return accel
+    #ff = float(0.5 * speed / 40.)
+    #return float(accel) / 5.0 + ff
 
   @staticmethod
   def calc_accel_override(a_ego, a_target, v_ego, v_target):
@@ -136,7 +138,11 @@ class CarInterface(object):
     ret.vEgoRaw = self.speed
     a = (self.speed - self.prev_speed) * 10.  # uBlox reports at 10Hz
 
+    alpha = 0.95
+    a = alpha * self.a_prev + (1. - alpha) * a
     ret.aEgo = a
+    self.a_prev = a
+
     ret.brakePressed = a < -0.5
 
     ret.cruiseState.speed = self.set_speed
