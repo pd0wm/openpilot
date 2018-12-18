@@ -96,33 +96,29 @@ class LongControl(object):
 
     # tracking objects and driving
     elif self.long_control_state == LongCtrlState.pid:
-      self.v_pid = v_target
-      self.pid.pos_limit = gas_max
-      self.pid.neg_limit = - brake_max
+      a_target_indi = a_target + 0.2 * (v_target - v_ego)
 
-
-      # Inputs v_ego_pid, a_ego
-      # Setpoint a_target
-      # Ouput -1 to 1 for full braking to full acceleration (about -3 to +3 m/s^2)
-      acc_err = a_target - a_ego
-      g_inv = 1 / 12.0
+      acc_err = a_target_indi - a_ego
+      g_inv = 1 / 12.0 # Actuator effectiveness
       delta_u = g_inv * acc_err
 
-      alpha = 0.98
+      dt = 0.01
+      RC = 1.0
+      alpha = 1 - dt / (RC + dt)
+
       self.filter_output = self.filter_output * alpha + self.u * (1 - alpha)
       self.u = self.filter_output + delta_u
-      output_gb = self.u
 
+      # Limit to 0 because there are no brakes
+      self.u = max(self.u, 0.)
+
+      output_gb = self.u
       # Toyota starts braking more when it thinks you want to stop
       # Freeze the integrator so we don't accelerate to compensate, and don't allow positive acceleration
-      # prevent_overshoot = not CP.stoppingControl and v_ego < 1.5 and v_target_future < 0.7
-      # deadzone = interp(v_ego_pid, CP.longPidDeadzoneBP, CP.longPidDeadzoneV)
-      # prevent_overshoot = prevent_overshoot or a_ego < -0.25
+      prevent_overshoot = not CP.stoppingControl and v_ego < 1.5 and v_target_future < 0.7
 
-      # output_gb = self.pid.update(self.v_pid, v_ego_pid, speed=v_ego_pid, deadzone=deadzone, feedforward=a_target, freeze_integrator=prevent_overshoot)
-
-      # if prevent_overshoot:
-      #   output_gb = min(output_gb, 0.0)
+      if prevent_overshoot:
+        output_gb = min(output_gb, 0.0)
 
     # Intention is to stop, switch to a different brake control until we stop
     elif self.long_control_state == LongCtrlState.stopping:
