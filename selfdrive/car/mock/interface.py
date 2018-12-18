@@ -8,7 +8,9 @@ from selfdrive.controls.lib.drive_helpers import EventTypes as ET, create_event
 from selfdrive.boardd.boardd import can_list_to_can_capnp
 from selfdrive.boardd.boardd import can_capnp_to_can_list
 import selfdrive.messaging as messaging
+from common.kalman.simple_kalman import KF1D
 from common.numpy_fast import clip
+
 
 # mocked car interface to work with chffrplus
 TS = 0.01  # 100Hz
@@ -44,7 +46,16 @@ class CarInterface(object):
     self.prev_enabled = False
 
     self.can = messaging.sub_sock(context, service_list['can'].port)
-    self.a_prev = 0.
+
+    # vEgo kalman filter
+    dt = 0.01
+    # Q = np.matrix([[10.0, 0.0], [0.0, 100.0]])
+    # R = 1e3
+    self.v_ego_kf = KF1D(x0=np.matrix([[0.0], [0.0]]),
+                         A=np.matrix([[1.0, dt], [0.0, 1.0]]),
+                         C=np.matrix([1.0, 0.0]),
+                         K=np.matrix([[0.12287673], [0.29666309]]))
+    self.v_ego = 0.0
 
   @staticmethod
   def compute_gb(accel, speed):
@@ -133,17 +144,12 @@ class CarInterface(object):
     # create message
     ret = car.CarState.new_message()
 
-    # speeds
-    ret.vEgo = self.speed
+    # Speed
+    v_ego_x = self.v_ego_kf.update(self.speed)
     ret.vEgoRaw = self.speed
-    a = (self.speed - self.prev_speed) * 10.  # uBlox reports at 10Hz
-
-    alpha = 0.95
-    a = alpha * self.a_prev + (1. - alpha) * a
-    ret.aEgo = a
-    self.a_prev = a
-
-    ret.brakePressed = a < -0.5
+    ret.vEgo = float(v_ego_x[0])
+    ret.aEgo = float(v_ego_x[1])
+    ret.brakePressed = ret.aEgo < -0.5
 
     ret.cruiseState.speed = self.set_speed
     ret.cruiseState.enabled = self.enabled
@@ -151,7 +157,7 @@ class CarInterface(object):
 
     self.yawRate = LPG * self.yaw_rate_meas + (1. - LPG) * self.yaw_rate
     ret.yawRate = self.yaw_rate
-    ret.standstill = self.speed < 0.01
+    ret.standstill = ret.vEgo < 0.1
     ret.wheelSpeeds.fl = self.speed
     ret.wheelSpeeds.fr = self.speed
     ret.wheelSpeeds.rl = self.speed
