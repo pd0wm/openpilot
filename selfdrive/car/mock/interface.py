@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import zmq
+import numpy as np
 from cereal import car, log
 from selfdrive.config import Conversions as CV
 from selfdrive.services import service_list
