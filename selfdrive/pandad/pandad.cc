@@ -58,6 +58,10 @@ Panda *connect(std::string serial) {
     panda->set_can_fd_auto(i, true);
   }
 
+  // TODO: get speeds from carParams instead
+  panda->set_can_speed_kbps(0, 1000);
+  panda->set_data_speed_kbps(0, 5000);
+
   if (!panda->up_to_date() && !getenv("BOARDD_SKIP_FW_CHECK")) {
     throw std::runtime_error("Panda firmware out of date. Run pandad.py to update.");
   }
