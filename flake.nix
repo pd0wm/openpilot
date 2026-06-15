@@ -66,10 +66,12 @@
         cacert
         glibcLocales
 
-        # --- Qt5: only needed for tools/cabana (skipped if qmake is absent) ---
-        qt5.qtbase             # qmake/moc/rcc/uic + Qt5Core/Gui/Widgets
+        # --- Qt5: tools/cabana (qmake build) + the prebuilt plotjuggler binary ---
+        qt5.qtbase             # qmake/moc/rcc/uic + Qt5Core/Gui/Widgets/Network/Xml
         qt5.qtcharts           # Qt5Charts
         qt5.qtsvg              # runtime SVG plugin for the bootstrap-icons assets
+        qt5.qtx11extras        # Qt5X11Extras   — prebuilt plotjuggler binary
+        qt5.qtwebsockets       # Qt5WebSockets  — plotjuggler libDataStreamWebSocket
         libva                  # cabana links va/va-drm (also bundled in the ffmpeg wheel)
 
         # --- compression libs (also vendored, harmless to provide at system level) ---
@@ -92,6 +94,8 @@
         libusb1
         portaudio              # sounddevice (micd/soundd)
         dbus
+        elfutils               # libdw.so.1   — prebuilt plotjuggler binary
+        zeromq                 # libzmq.so.5  — plotjuggler libDataStreamZMQ/Cereal
 
         # --- graphics: raylib UI, replay, jotpluggler link against system GL/X11 ---
         libGL
@@ -114,7 +118,19 @@
       ];
 
       mkFhsEnv = system:
-        let pkgs = pkgsFor system;
+        let
+          pkgs = pkgsFor system;
+          # The prebuilt plotjuggler rlog loader (built on Ubuntu) wants
+          # libbz2.so.1.0, but nixpkgs' bzip2 has soname libbz2.so.1, so the
+          # soname-keyed ld.so.cache never matches and NixOS' glibc has no
+          # implicit /usr/lib search path. Expose just this one compat name on
+          # LD_LIBRARY_PATH (a filename lookup) — scoped to a dir holding only
+          # this symlink so it can't shadow any other system lib (e.g. the
+          # build toolchain's libstdc++).
+          bz2compat = pkgs.runCommand "libbz2-compat" { } ''
+            mkdir -p $out/lib
+            ln -s ${pkgs.lib.getLib pkgs.bzip2}/lib/libbz2.so.1 $out/lib/libbz2.so.1.0
+          '';
         in (pkgs.buildFHSEnv {
           name = "openpilot-dev";
           inherit targetPkgs;
@@ -133,6 +149,9 @@
             # Let pkg-config find the FHS /usr libs (the cc-wrapper already has the
             # /usr include + lib paths baked in, so plain gcc/g++ work with no flags).
             export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+            # libbz2.so.1.0 compat for the prebuilt plotjuggler rlog loader (see bz2compat).
+            export LD_LIBRARY_PATH="${bz2compat}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
             # Auto-install python deps and activate the venv on shell entry.
             # Set OPENPILOT_SKIP_SYNC=1 to skip the sync (e.g. when offline).
