@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "openpilot": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "openpilot.tools.mcp"]
+    }
+  }
+}
