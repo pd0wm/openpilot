@@ -9,6 +9,19 @@ from opendbc.can.parser import CANDefine, get_raw_value
 from openpilot.tools.mcp.common import DEFAULT_MAX_MESSAGES, make_log_reader, rel_time
 
 
+def _load_dbc(name: str) -> DBC:
+  """Load a DBC, bypassing opendbc's process-wide @cache.
+
+  The MCP server is long-lived, but DBC files on disk change between calls (e.g.
+  while a DBC is being edited). opendbc's DBC class is @cache-decorated, so without
+  this the first load would be pinned for the life of the server. CANDefine/CANParser
+  build DBC() internally, so we clear the shared cache rather than just returning a
+  fresh instance here, making those see the current file too.
+  """
+  DBC.cache_clear()
+  return DBC(name)
+
+
 def list_dbcs() -> dict:
   """List the DBC names available in opendbc."""
   names = {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(DBC_PATH, "*.dbc"))}
@@ -29,7 +42,7 @@ def dbc_info(dbc: str, message: str | None = None) -> dict:
   Without message: list every message (name, address, size, signal count).
   With a message (name or address): list its signals (bit layout, scaling, type) and any value tables.
   """
-  d = DBC(dbc)
+  d = _load_dbc(dbc)
 
   if message is None:
     msgs = [
@@ -100,7 +113,7 @@ def parse_can(
   if decimation < 1:
     raise ValueError("decimation must be >= 1")
 
-  d = DBC(dbc)
+  d = _load_dbc(dbc)
 
   # resolve requested messages to (name, signals to decode) keyed by address
   by_addr: dict[int, tuple[str, list]] = {}
